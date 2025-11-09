@@ -28,32 +28,46 @@ export class ReportGenerator {
     return footer;
   }
 
-  generateItemLine(reportType, user, item) {
-    let line = "";
-    if (user.role === "ADMIN" || (user.role === "USER" && item.value <= 500)) {
-      if (reportType === "CSV") {
-        line = `${item.id},${item.name},${item.value},${user.name}\n`;
-      } else if (reportType === "HTML") {
-        const style =
-          user.role === "ADMIN" && item.value > 1000
-            ? 'style="font-weight:bold;"'
-            : "";
-        line = `<tr ${style}><td>${item.id}</td><td>${item.name}</td><td>${item.value}</td></tr>\n`;
+  shouldIncludeItem(item, user) {
+    return user.role === "ADMIN" || (user.role === "USER" && item.value <= 500);
+  }
+
+  getPriorityStyle(item) {
+    return item.value > 1000 ? 'style="font-weight:bold;"' : "";
+  }
+
+  generateItemLine(item, reportType, user) {
+    if (!this.shouldIncludeItem(item, user)) return "";
+
+    const itemString = `${item.id},${item.name},${item.value},${user.name}\n`;
+    const itemHTML = `<tr ${this.getPriorityStyle(item)}><td>${
+      item.id
+    }</td><td>${item.name}</td><td>${item.value}</td></tr>\n`;
+
+    return reportType === "CSV" ? itemString : itemHTML;
+  }
+
+  calculateTotal(items, user) {
+    return items.reduce((total, item) => {
+      if (this.shouldIncludeItem(item, user)) {
+        total += item.value;
       }
-    }
-    return line;
+      return total;
+    }, 0);
   }
 
   generateReport(reportType, user, items) {
-    let report = this.generateHeader(reportType, user);
-    let total = 0;
+    let header = this.generateHeader(reportType, user);
+    let body = "";
 
     for (const item of items) {
-      report += this.generateItemLine(item, reportType, user);
-      total += item.value;
+      body = this.generateItemLine(item, reportType, user);
     }
 
-    report += this.generateFooter(reportType, total);
-    return report.trim();
+    let footer = this.generateFooter(
+      reportType,
+      this.calculateTotal(items, user)
+    );
+    return `${header}${body}${footer}`.trim();
   }
 }
