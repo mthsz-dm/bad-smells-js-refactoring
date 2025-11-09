@@ -28,39 +28,32 @@ export class ReportGenerator {
     return footer;
   }
 
-  generateReport(reportType, user, items) {
-    let report = "";
-    let total = 0;
-
-    // --- Seção do Corpo (Alta Complexidade) ---
-    for (const item of items) {
-      if (user.role === "ADMIN") {
-        // Admins veem todos os itens
-        if (item.value > 1000) {
-          // Lógica bônus para admins
-          item.priority = true;
-        }
-
-        if (reportType === "CSV") {
-          report += `${item.id},${item.name},${item.value},${user.name}\n`;
-          total += item.value;
-        } else if (reportType === "HTML") {
-          const style = item.priority ? 'style="font-weight:bold;"' : "";
-          report += `<tr ${style}><td>${item.id}</td><td>${item.name}</td><td>${item.value}</td></tr>\n`;
-          total += item.value;
-        }
-      } else if (user.role === "USER") {
-        // Users comuns só veem itens de valor baixo
-        if (item.value <= 500) {
-          if (reportType === "CSV") {
-            report += `${item.id},${item.name},${item.value},${user.name}\n`;
-            total += item.value;
-          } else if (reportType === "HTML") {
-            report += `<tr><td>${item.id}</td><td>${item.name}</td><td>${item.value}</td></tr>\n`;
-            total += item.value;
-          }
-        }
+  generateItemLine(reportType, user, item) {
+    let line = "";
+    if (user.role === "ADMIN" || (user.role === "USER" && item.value <= 500)) {
+      if (reportType === "CSV") {
+        line = `${item.id},${item.name},${item.value},${user.name}\n`;
+      } else if (reportType === "HTML") {
+        const style =
+          user.role === "ADMIN" && item.value > 1000
+            ? 'style="font-weight:bold;"'
+            : "";
+        line = `<tr ${style}><td>${item.id}</td><td>${item.name}</td><td>${item.value}</td></tr>\n`;
       }
     }
+    return line;
+  }
+
+  generateReport(reportType, user, items) {
+    let report = this.generateHeader(reportType, user);
+    let total = 0;
+
+    for (const item of items) {
+      report += this.generateItemLine(item, reportType, user);
+      total += item.value;
+    }
+
+    report += this.generateFooter(reportType, total);
+    return report.trim();
   }
 }
